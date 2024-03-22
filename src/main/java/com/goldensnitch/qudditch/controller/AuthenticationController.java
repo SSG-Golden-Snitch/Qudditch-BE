@@ -87,16 +87,17 @@ public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest
     }
 
     @GetMapping("/loginSuccess")
-    public String loginSuccess(@AuthenticationPrincipal OAuth2User user) {
-        // 로그인 성공 후 사용자 정보 처리
-        // 'user' 객체에는 네이버로부터 받은 사용자 정보가 들어 있습니다.
-        return "로그인에 성공했습니다.";
+    public ResponseEntity<String> loginSuccess(@AuthenticationPrincipal OAuth2User user) {
+        // 로그인 성공 후 사용자 정보 처리 로직
+        // 리다이렉트 대신 성공 메시지 반환
+        return ResponseEntity.ok("로그인에 성공했습니다.");
     }
-
+    
     @GetMapping("/loginFailure")
-    public String loginFailure() {
-        // 로그인 실패 처리
-        return "로그인에 실패했습니다.";
+    public ResponseEntity<String> loginFailure() {
+        // 로그인 실패 처리 로직
+        // 리다이렉트 대신 실패 메시지 반환
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인에 실패했습니다.");
     }
 
     @GetMapping("/verify")

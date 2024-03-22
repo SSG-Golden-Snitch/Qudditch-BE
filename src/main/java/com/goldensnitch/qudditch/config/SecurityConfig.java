@@ -91,7 +91,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.client.RestTemplate;
 
 import com.goldensnitch.qudditch.jwt.JwtTokenFilter;
@@ -155,12 +157,21 @@ public class SecurityConfig {
             .failureUrl("/loginFailure")
             .clientRegistrationRepository(clientRegistrationRepository))
         .formLogin(form -> form
+            //... 폼 로그인 관련 설정
             .loginPage("/login")
             .defaultSuccessUrl("/loginSuccess", true)  // 로그인 성공 시 리다이렉트될 URL
             .failureUrl("/loginFailure")  // 로그인 실패 시 리다이렉트될 URL
             .permitAll())
+        // 로그아웃 설정이 리다이렉트 루프에 영향을 주지 않도록 주의
         .logout(logout -> logout
-            .logoutSuccessUrl("/"));  // 로그아웃 성공 시 리다이렉트될 URL
+            .logoutSuccessUrl("/login")  // 로그아웃 성공 시 로그인 페이지로 이동
+            .deleteCookies("JSESSIONID") // 로그아웃 시 쿠키 삭제
+            .permitAll())
+        // ... 기타 설정
+        .and()
+        .exceptionHandling().defaultAuthenticationEntryPointFor(
+            new LoginUrlAuthenticationEntryPoint("/home"),
+            new AntPathRequestMatcher("/login"));
         
         // JWT 필터 설정이 필요하다면 여기에 추가
         http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
