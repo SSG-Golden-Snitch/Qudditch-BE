@@ -68,12 +68,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http//  CSRF 비활성화
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable) // CSRF 보호를 비활성화합니다.
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정을 활성화합니다.
                 //  세션 관리 정책 설정
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션을 사용하지 않도록 설정합니다.
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll())
+                        .anyRequest().permitAll()) // 모든 요청에 대해 권한을 부여합니다.
                 .oauth2Login(oauth2 -> oauth2
                         .redirectionEndpoint(redirection -> redirection
                                 .baseUri("/oauth2/callback/*"))
@@ -81,11 +81,10 @@ public class SecurityConfig {
                                 .userService(oauth2UserService())) // 이 메서드는 oauth2UserService를 참조합니다
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/login")
-                        .deleteCookies("JSESSIONID")
-                        .permitAll())
-                // JwtTokenFilter를 필터 체인에 추가합니다.
-                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+                        .logoutSuccessUrl("/login") // 로그아웃 성공시 리다이렉트할 URL을 설정합니다.
+                        .deleteCookies("JSESSIONID") // 로그아웃 시 쿠키를 삭제합니다.
+                        .permitAll()) // 모든 사용자가 로그아웃을 수행할 수 있도록 허용합니다.
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);// JwtTokenFilter를 필터 체인에 추가합니다.
 
         return http.build();
     }

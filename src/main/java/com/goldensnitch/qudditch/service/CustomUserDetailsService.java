@@ -38,7 +38,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         log.info("Loading user by email: {}", email);
 
-        UserCustomer customer = userCustomerMapper.selectUserByEmail(email);
+        UserCustomer customer = userCustomerMapper.findByEmail(email);
         UserStore store = userStoreMapper.findByEmail(email);
         UserAdmin admin = userAdminMapper.findByEmail(email);
 

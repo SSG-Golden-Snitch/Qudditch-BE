@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.sendgrid.Method;
@@ -78,31 +77,28 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(String toEmail, String verificationCode) throws IOException {
-        String subject = "계정 인증을 완료해주세요";
-        String verificationUrl = "http://yourdomain.com/verify?code=" + verificationCode;
-        String contentText = String.format("아래 링크를 클릭하여 계정 인증을 완료해주세요: %s", verificationUrl);
-
-        Email from = new Email(this.fromEmail);
-        Email to = new Email(toEmail);
-        Content content = new Content("text/plain", contentText);
-        Mail mail = new Mail(from, subject, to, content);
-
-        
-
-        // 이메일 구성 및 전송 로직
         try {
+            String subject = "계정 인증을 완료해주세요";
+            String verificationUrl = String.format("https://yourdomain.com/verify?code=%s", verificationCode);
+            String contentText = String.format("<html><body><p>아래 링크를 클릭하여 계정 인증을 완료해주세요:</p>" +
+                                            "<a href=\"%s\">계정 인증하기</a></body></html>", verificationUrl);
+            Email from = new Email(this.fromEmail);
+            Email to = new Email(toEmail);
+            Content content = new Content("text/html", contentText);
+            Mail mail = new Mail(from, subject, to, content);
+
             sendEmail(mail);
-        } catch (IOException e) {
-            log.error("이메일 인증 보내기에 실패하였습니다.", e);
-            throw new EmailSendingException("이메일 보내기에 실패했습니다: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Verification email sending failed for email {}: {}", toEmail, e.getMessage());
+            throw e; // Re-throw the exception to ensure the calling method can handle it
         }
     }
     
-
+    // 비밀번호 재설정 이메일을 전송하는 메서드
     public void sendPasswordResetEmail(String toEmail, String temporaryPassword) throws IOException {
-        String subject = "Password Reset Request";
-        String contentText = "Here is your temporary password: " + temporaryPassword +
-                            "\nPlease change your password after logging in.";
+        String subject = "비밀번호 재설정 요청"; // 이메일 제목
+        String contentText = "다음은 임시 비밀번호입니다: " + temporaryPassword +
+                            "\n로그인 후 비밀번호를 변경해주세요."; // 이메일 내용
         
         Email from = new Email(this.fromEmail);
         Email to = new Email(toEmail);
@@ -120,11 +116,21 @@ public class EmailService {
         request.setBody(mail.build());
 
         Response response = sendGrid.api(request);
-        if (response.getStatusCode() != HttpStatus.OK.value()) {
-            log.error("Failed to send email: {}", response.getBody());
-            throw new EmailSendingException("Failed to send email. Status code: " + response.getStatusCode());
+        if (response.getStatusCode() != 202) {
+            log.error("이메일 전송 실패: {}, body: {}", response.getStatusCode(), response.getBody());
+            throw new RuntimeException("이메일 전송 실패: 상태 코드 " + response.getStatusCode());
         }
     }
 
-    // 기타 메서드...
+    // 인증 코드 생성 메소드
+    private String generateVerificationCode(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuilder result = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int index = (int) (Math.random() * characters.length());
+            result.append(characters.charAt(index));
+        }
+        return result.toString();
+    }
 }
+    

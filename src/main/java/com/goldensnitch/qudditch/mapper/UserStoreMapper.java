@@ -1,10 +1,11 @@
 package com.goldensnitch.qudditch.mapper;
 
-import com.goldensnitch.qudditch.dto.Store;
-import com.goldensnitch.qudditch.dto.UserStore;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 
-import java.util.List;
+import com.goldensnitch.qudditch.dto.Store;
+import com.goldensnitch.qudditch.dto.UserStore;
 
 @Mapper
 public interface UserStoreMapper {

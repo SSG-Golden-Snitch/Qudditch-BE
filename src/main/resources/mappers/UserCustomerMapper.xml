@@ -1,106 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.goldensnitch.qudditch.mapper.UserCustomerMapper">
+<!-- 사용자 추가 -->
+<insert id="insertUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
+    INSERT INTO user_customer (email, password, name, state)
+    VALUES (#{email}, #{password}, #{name}, #{state})
+</insert>
 
-    <insert id="insertUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
-        INSERT INTO user_customer (email, password, name, state)
-        VALUES (#{email}, #{password}, #{name}, #{state})
-    </insert>
+<!-- 이메일로 사용자 조회 -->
+<select id="findByEmail" parameterType="String" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
+    SELECT *
+    FROM user_customer
+    WHERE email = #{email}
+</select>
 
+<!-- 인증 코드로 사용자 조회 -->
+<select id="findByVerificationCode" parameterType="String" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
+    SELECT *
+    FROM user_customer
+    WHERE verification_code = #{verificationCode}
+</select>
 
-    <!-- select쿼리 -->
-    <!-- login 처리 -->
-    <select id="login" parameterType="map" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT *
-        FROM user_customer
-        WHERE email = #{email}
-        AND password = #{password}
-    </select>
-    <!-- ID로 특정 사용자 조회 -->
-    <select id="selectUserById" parameterType="int" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        select *
-        from user_customer
-        where id = #{id}
-    </select>
-    <!-- 이메일로 특정 사용자 조회 -->
-    <select id="selectUserByName" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT name, email
-        FROM user_customer
-        WHERE name = #{name}
-    </select>
+<!-- 사용자 정보 업데이트 -->
+<update id="updateUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
+    UPDATE user_customer
+    SET email = #{email}, password = #{password}, name = #{name}, state = #{state}, modifiedAt = NOW()
+    WHERE id = #{id}
+</update>
 
-    <!-- 이메일 인증 코드로 사용자 조회-->
-    <select id="findByVerificationCode" parameterType="String" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT *
-        FROM user_customer
-    </select>
-
-    <!-- 전체 사용자 조회 -->
-    <select id="selectAllUsers" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        select *
-        from user_customer
-    </select>
-
-    <!-- 이름으로 사용자 조회 -->
-    <select id="findByName" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT name, email
-        FROM user_customer
-        WHERE name = #{name}
-    </select>
-
-    <!-- 조건부 검색: 상태(state)에 따른 사용자 조회-->
-    <select id="selectUsersByState" parameterType="int" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT *
-        FROM user_customer
-        WHERE state = #{state}
-    </select>
-
-    <!-- 집계 함수: 전체 사용자 수 계산 -->
-    <select id="countAllUsers" resultType="int">
-        SELECT COUNT(*)
-        FROM user_customer
-    </select>
-
-    <!-- JOIN연산: user_customer와 user_store 테이블 조인하여 상세 정보 조회 -->
-    <select id="selectUserCustomerWithStore" resultType="map">
-        SELECT uc.*, us.store_id, us.bn_number
-        FROM user_customer uc
-                JOIN user_store us ON uc.id = us.id
-        WHERE uc.id = #{id}
-    </select>
-
-    <select id="findByEmail" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT *
-        FROM user_customer
-        WHERE email = #{email}
-    </select>
-    <select id="selectUserByEmail" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT *
-        FROM user_customer
-        WHERE email = #{email}
-    </select>
-
-    <!-- update쿼리 -->
-    <!-- 사용자 정보 업데이트 -->
-    <update id="updateUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
-        UPDATE user_customer
-        SET password = #{password},
-            name = #{name},
-            state = #{state},
-            modifiedAt = NOW() <!-- 현재 시간으로 수정 시간 업데이트 -->
-        WHERE id = #{id}
-    </update>
-
-
-    <!-- delete쿼리 -->
-    <!-- 사용자 삭제 -->
-    <delete id="deleteUser" parameterType="int">
-        delete
-        from user_customer
-        where id = #{id}
-    </delete>
-
-    
-
-
+<!-- 사용자 삭제 -->
+<delete id="deleteUser" parameterType="int">
+    DELETE FROM user_customer WHERE id = #{id}
+</delete>
 </mapper>

@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.goldensnitch.qudditch.dto.AuthResponse;
 import com.goldensnitch.qudditch.dto.LoginRequest;
+import com.goldensnitch.qudditch.dto.RegisterRequest;
 import com.goldensnitch.qudditch.dto.RegisterStoreRequest;
 import com.goldensnitch.qudditch.dto.SocialLoginDto;
 import com.goldensnitch.qudditch.dto.UserAdmin;
@@ -35,6 +37,8 @@ import com.goldensnitch.qudditch.dto.UserStore;
 import com.goldensnitch.qudditch.jwt.JwtTokenProvider;
 import com.goldensnitch.qudditch.mapper.UserAdminMapper;
 import com.goldensnitch.qudditch.mapper.UserCustomerMapper;
+import com.goldensnitch.qudditch.service.EmailSendingException;
+import com.goldensnitch.qudditch.service.EmailService;
 import com.goldensnitch.qudditch.service.ExtendedUserDetails;
 import com.goldensnitch.qudditch.service.OCRService;
 import com.goldensnitch.qudditch.service.UserService;
@@ -42,7 +46,6 @@ import com.goldensnitch.qudditch.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 @RestController
 public class AuthenticationController {
     private final AuthenticationManager authenticationManager;
@@ -51,6 +54,7 @@ public class AuthenticationController {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final UserAdminMapper userAdminMapper; // 생성자 주입 추가
+    private final EmailService emailService;
     private static final Logger log = LoggerFactory.getLogger(AuthenticationController.class);
 
     @Autowired
@@ -59,8 +63,9 @@ public class AuthenticationController {
         JwtTokenProvider jwtTokenProvider,
         UserCustomerMapper userCustomerMapper,
         UserService userService,
+        EmailService emailService,
         PasswordEncoder passwordEncoder,
-        UserAdminMapper userAdminMapper // 생성자 주입 추가
+        UserAdminMapper userAdminMapper
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -68,6 +73,7 @@ public class AuthenticationController {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.userAdminMapper = userAdminMapper; // 초기화 추가
+        this.emailService = emailService;
     }
 
     //일반 유저 로그인 처리(http-only쿠키 사용)
@@ -150,21 +156,72 @@ public ResponseEntity<?> socialLogin(@PathVariable String provider, @RequestBody
         return "로그인에 실패했습니다.";
     }
 
-    @GetMapping("/verify")
-    public ResponseEntity<String> verifyUser(@RequestParam("code") String code) {
-        UserCustomer user = userCustomerMapper.findByVerificationCode(code);
-
-        if (user == null) {
-            return ResponseEntity.badRequest().body("Invalid verification code.");
+    // 일반 유저 회원가입을 위한 엔드포인트
+    @PostMapping("/register/customer")
+    public ResponseEntity<?> registerCustomer(@RequestBody RegisterRequest registerRequest) {
+        UserCustomer userCustomer = new UserCustomer();
+        userCustomer.setEmail(registerRequest.getEmail());
+        userCustomer.setName(registerRequest.getName());
+        userCustomer.setPassword(registerRequest.getPassword()); // 비밀번호는 일단 플레인 텍스트로 설정
+    
+    
+        // 이메일 중복 검사
+        UserCustomer existingUser = userCustomerMapper.findByEmail(userCustomer.getEmail());
+        if (existingUser != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("이미 존재하는 이메일입니다.");
         }
-
-        // 사용자 상태를 '일반'(1)으로 업데이트
-        user.setState(1);
-        user.setVerificationCode(null); // 인증 코드 사용 후 초기화
-        userCustomerMapper.updateUserCustomer(user);
-
-        return ResponseEntity.ok("Account verified successfully.");
+        // 비밀번호 암호화 및 사용자 저장
+        userCustomer.setPassword(passwordEncoder.encode(userCustomer.getPassword()));
+        userCustomerMapper.insertUserCustomer(userCustomer);
+        
+        return ResponseEntity.ok("회원가입이 완료되었습니다.");
     }
+
+    // 사용자의 이메일 중복 검사를 처리하는 엔드포인트입니다.
+    @PostMapping("/check-email")
+    public ResponseEntity<?> checkEmail(@RequestBody Map<String, String> requestBody) {
+        String email = requestBody.get("email");
+        UserCustomer existingUser = userCustomerMapper.findByEmail(email);
+        if (existingUser != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 사용 중인 이메일입니다.");
+        }
+        return ResponseEntity.ok("사용 가능한 이메일입니다.");
+    }
+
+    // 인증 이메일 보내기
+    @PostMapping("/request-verification")
+    public ResponseEntity<?> requestEmailVerification(@RequestBody Map<String, String> requestBody) {
+        String email = requestBody.get("email");
+        // Validation code here...
+    
+        try {
+            // Generate a new verification code and save it to the database.
+            UserCustomer newUserCustomer = new UserCustomer();
+            // Set newUserCustomer properties including email and verification code.
+            userCustomerMapper.insertUserCustomer(newUserCustomer);
+    
+            emailService.sendVerificationEmail(email, newUserCustomer.getVerificationCode());
+            return ResponseEntity.ok("인증 이메일이 발송되었습니다. 이메일을 확인해 주세요.");
+        } catch (Exception e) {
+            log.error("Failed to send verification email: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("인증 이메일을 보내는 데 실패하였습니다.");
+        }
+    }
+
+    // 인증 코드를 확인하고 state를 업데이트하는 새로운 메서드입니다.
+@PostMapping("/verify-account")
+public ResponseEntity<?> verifyAccount(@RequestParam String code) {
+    UserCustomer userCustomer = userCustomerMapper.findByVerificationCode(code);
+    
+    if (userCustomer == null) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("유효하지 않은 인증 코드입니다.");
+    }
+    
+    // 이메일 인증이 성공한 경우, state를 업데이트
+    userCustomer.setState(1); // 인증된 상태로 업데이트
+
+    return ResponseEntity.ok("이메일 인증 성공하였습니다.");
+}
 
     @GetMapping("/self")
     public ResponseEntity<?> getSelf(Authentication authentication) {
@@ -188,12 +245,7 @@ public ResponseEntity<?> socialLogin(@PathVariable String provider, @RequestBody
         }
     }
 
-    // 일반 유저 회원가입을 위한 엔드포인트
-    @PostMapping("/register/customer")
-    public ResponseEntity<?> registerCustomer(@RequestBody UserCustomer userCustomer) {
-        // UserService의 회원가입 로직을 호출하여 처리결과를 반환한다.
-        return userService.registerUserCustomer(userCustomer);
-    }
+    
 
     @Autowired
     private OCRService ocrService;
@@ -275,4 +327,27 @@ public ResponseEntity<?> socialLogin(@PathVariable String provider, @RequestBody
         return ResponseEntity.ok(authResponse);
     }
 
+    // 아이디(이메일) 찾기 엔드포인트
+@PostMapping("/find-email")
+public ResponseEntity<?> findEmail(@RequestBody Map<String, String> payload) {
+    String name = payload.get("name");
+    try {
+        String email = userService.findUsernameByName(name);
+        return ResponseEntity.ok(email);
+    } catch (UsernameNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 이름의 사용자를 찾을 수 없습니다.");
+    }
+}
+
+// 비밀번호 재설정 요청 엔드포인트
+@PostMapping("/reset-password")
+public ResponseEntity<?> resetUserPassword(@RequestBody Map<String, String> payload) {
+    String email = payload.get("email");
+    try {
+        userService.resetPassword(email);
+        return ResponseEntity.ok("비밀번호 재설정 이메일을 발송하였습니다.");
+    } catch (UsernameNotFoundException | EmailSendingException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+}
 }
