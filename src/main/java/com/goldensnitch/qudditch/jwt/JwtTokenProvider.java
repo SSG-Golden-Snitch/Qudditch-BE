@@ -19,13 +19,10 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-
-import com.goldensnitch.qudditch.service.ExtendedUserDetails;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -44,24 +41,25 @@ public class JwtTokenProvider {
     @Value("${jwt.expirationInMs}")
     private int JWT_EXPIRATION_IN_MS;
 
-    // 권한을 토큰에 포함시키는 메소드
-    public String generateToken(Authentication authentication) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION_IN_MS);
+    // Authentication 객체를 받아서 토큰을 생성하는 메서드로 수정합니다.
+public String generateToken(Authentication authentication) {
+    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+    Date now = new Date();
+    Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION_IN_MS);
 
-        // 'Authentication' 객체에서 'Principal'을 얻습니다.
-        String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
+    String authorities = authentication.getAuthorities().stream()
+        .map(GrantedAuthority::getAuthority)
+        .collect(Collectors.joining(","));
 
-        // 권한(역할)을 토큰에 포함시키기 위해 변경
-        String authorities = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.joining(","));
-
-        return Jwts.builder().subject(userId) // 'subject'를 사용자 ID로 설정
-            .claim("roles", authorities)    // claim에 권한을 포함시킨다.
-            .claim("name", ((ExtendedUserDetails) authentication.getPrincipal()).getName())
-            .issuedAt(now).expiration(expiryDate)
-            // .signWith(Jwts.SIG.HS256, secretKey)
-            .signWith(SignatureAlgorithm.HS256, JWT_SECRET).compact();
-    }
+    return Jwts.builder()
+        .setSubject(userDetails.getUsername())
+        .claim("roles", authorities)
+        .claim("name", userDetails.getUsername())
+        .setIssuedAt(now)
+        .setExpiration(expiryDate)
+        .signWith(SignatureAlgorithm.HS256, JWT_SECRET)
+        .compact();
+}
 
     public boolean validateToken(String authToken) {
         try {
