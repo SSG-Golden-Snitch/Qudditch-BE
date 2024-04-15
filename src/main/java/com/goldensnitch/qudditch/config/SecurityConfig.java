@@ -13,18 +13,20 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.goldensnitch.qudditch.jwt.JwtTokenFilter;
+import com.goldensnitch.qudditch.service.CustomOAuth2UserService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -67,42 +69,34 @@ public class SecurityConfig {
     // SecurityFilterChain 빈 정의
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http//  CSRF 비활성화
+        http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            //  세션 관리 정책 설정
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll())
+                .antMatchers("/login", "/oauth2/**").permitAll()
+                .anyRequest().authenticated())
             .oauth2Login(oauth2 -> oauth2
-                .redirectionEndpoint(redirection -> redirection
-                    .baseUri("/oauth2/callback/*"))
                 .userInfoEndpoint(userInfo -> userInfo
-                    .userService(oauth2UserService())) // 이 메서드는 oauth2UserService를 참조합니다
+                    .userService(oauth2UserService())) // Custom OAuth2UserService 설정
+                .successHandler(this::successHandler)  // 로그인 성공 핸들러
             )
-            .logout(logout -> logout
-                .logoutSuccessUrl("/login")
-                .deleteCookies("JSESSIONID")
-                .permitAll())
-            // JwtTokenFilter를 필터 체인에 추가합니다.
-            .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
-
+            .logout(logout -> logout.logoutSuccessUrl("/").permitAll());
         return http.build();
+    }
+
+    private void successHandler(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+        // Assuming that jwtTokenProvider and other necessary services are autowired
+        String jwt = jwtTokenProvider.generateToken(authentication);
+        response.addHeader("Authorization", "Bearer " + jwt);
+        response.sendRedirect("/main");
     }
 
     @Bean
     public OAuth2UserService<OAuth2UserRequest, OAuth2User> oauth2UserService() {
-        DefaultOAuth2UserService defaultService = new DefaultOAuth2UserService();
-        return userRequest -> {
-            // DefaultOAuth2UserService를 통해 user 정보를 가져옵니다.
-            OAuth2User oAuth2User = defaultService.loadUser(userRequest);
-            
-            // 필요한 경우 OAuth2User에 대한 추가 처리를 수행하고 반환합니다.
-            // 예를 들어, 가져온 사용자 정보를 기반으로 데이터베이스에서 사용자를 찾거나 생성할 수 있습니다.
-
-            return oAuth2User;
-        };
+        return new CustomOAuth2UserService(); // CustomOAuth2UserService 구현
     }
+
 
     // RestTemplate 빈을 생성합니다.
     @Bean
