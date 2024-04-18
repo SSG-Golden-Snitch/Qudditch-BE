@@ -2,12 +2,14 @@ package com.goldensnitch.qudditch.service;
 
 import com.goldensnitch.qudditch.dto.CustomerOrder;
 import com.goldensnitch.qudditch.dto.CustomerOrderProduct;
+import com.goldensnitch.qudditch.dto.PaginationParam;
 import com.goldensnitch.qudditch.dto.payment.OrderProductStoreInfo;
 import com.goldensnitch.qudditch.dto.payment.OrderResponse;
 import com.goldensnitch.qudditch.mapper.CustomerOrderProductMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,11 +50,13 @@ public class CustomerOrderProductService { // 영수증 정보 생성, 월별 �
         return orderResponse;
     }
 
-    public List<OrderResponse> getMonthlyOrderHistory(String monthYear, Integer status) {
-        List<CustomerOrder> customerOrders = customerOrderProductMapper.findByMonthYear(monthYear, status);
-        return customerOrders.stream()
-                .map(order -> createOrderResponse(order.getId()))
-                .collect(Collectors.toList());
+    public List<OrderResponse> getMonthlyOrderHistory(String monthYear, Integer status, PaginationParam paginationParam) {
+        List<OrderResponse> orders = customerOrderProductMapper.getMonthlyOrderHistory(monthYear, status, paginationParam.getRecordSize(), paginationParam.getOffset());
+        return orders != null ? orders : new ArrayList<>();
+    }
+
+    public int countOrdersByMonthYear(String monthYear, Integer status) {
+        return customerOrderProductMapper.countOrdersByMonthYear(monthYear, status);
     }
 
     public List<CustomerOrder> getPointHistoryByCustomerId(Integer userCustomerId) {
@@ -77,4 +81,6 @@ public class CustomerOrderProductService { // 영수증 정보 생성, 월별 �
                 .map(order -> createOrderResponse(order.getId()))
                 .collect(Collectors.toList());
     }
+
+
 }

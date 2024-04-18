@@ -77,14 +77,6 @@
           AND DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
     </select>
 
-    <!-- 점주가 월별 주문 내역 조회 -->
-    <select id="findByMonthYear" parameterType="map" resultMap="customerOrderResultMap">
-        SELECT *
-        FROM customer_order
-        WHERE DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
-          AND status = #{status}
-    </select>
-
     <!-- 주문 ID로 주문 상품 정보 조회 -->
     <select id="findOrderProductsByOrderId" parameterType="java.lang.Integer" resultMap="customerOrderProductResultMap">
         SELECT
@@ -158,12 +150,36 @@
         WHERE tid = #{tid}
     </update>
 
+    <!-- 점주가 월별 주문 내역 조회 -->
+    <select id="findByMonthYear" parameterType="map" resultMap="customerOrderResultMap">
+        SELECT *
+        FROM customer_order
+        WHERE DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
+          AND status = #{status}
+    </select>
+
     <!-- 사용자 ID와 월별로 주문 내역 조회 -->
     <select id="findMonthlyOrdersByCustomerId" parameterType="map" resultMap="customerOrderResultMap">
         SELECT *
         FROM customer_order
         WHERE user_customer_id = #{userCustomerId}
           AND DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
+          AND status = #{status}
+    </select>
+
+    <select id="getMonthlyOrderHistory" parameterType="map" resultMap="customerOrderResultMap">
+        SELECT *
+        FROM customer_order
+        WHERE DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
+          AND status = #{status}
+        ORDER BY ordered_at DESC
+            LIMIT #{recordSize} OFFSET #{offset};
+    </select>
+
+    <select id="countOrdersByMonthYear">
+        SELECT COUNT(*)
+        FROM customer_order
+        WHERE DATE_FORMAT(ordered_at, '%Y-%m') = #{monthYear}
           AND status = #{status}
     </select>
 </mapper>
