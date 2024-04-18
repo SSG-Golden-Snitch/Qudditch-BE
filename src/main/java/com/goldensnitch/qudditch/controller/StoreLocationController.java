@@ -55,10 +55,5 @@ public class StoreLocationController {
 
        return map;
     }
-
-
-
-
-
-
+    
 }

@@ -23,8 +23,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -182,14 +180,14 @@ public class StoreOrderController {
         return outputStream.toByteArray();
     }
 
-    private void saveExcelFile(byte[] excelBytes, String filePath) {
-        File file = new File(filePath);
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(excelBytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//    private void saveExcelFile(byte[] excelBytes, String filePath) {
+//        File file = new File(filePath);
+//        try (FileOutputStream fos = new FileOutputStream(file)) {
+//            fos.write(excelBytes);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 
     @PostMapping("/detail/update/{id}")
