@@ -1,5 +1,12 @@
 package com.goldensnitch.qudditch.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -9,21 +16,15 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @Service
 public class TestService {
-    // @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
-    private String kakaoApiKey = "05b583074e45542f4c8ff3f86f5ef0f5";
-    // @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
-    private String kakaoRedirectUri ="http://localhost:3000/mobile/login/kakao";
+    @Value("${kakao.client-id}")
+    private String kakaoClientId;
+    @Value("${kakao.client-secret}")
+    private String kakaoClientSecret;
+    @Value("${kakao.redirect-uri}")
+    private String kakaoRedirectUri;
 
     public String getAccessToken(String code) {
         String accessToken = "";
@@ -42,10 +43,10 @@ public class TestService {
 
             //필수 쿼리 파라미터 세팅
             String params = "grant_type=authorization_code" +
-                        "&client_id=" + kakaoApiKey +
-                        "&redirect_uri=" + kakaoRedirectUri +
-                        "&client_secret=" + "vLtb75wHsNpMDC4t6uiZjpluEC4HoITH" +
-                        "&code=" + code;
+                "&client_id=" + kakaoClientId +
+                "&client_secret=" + kakaoClientSecret +
+                "&redirect_uri=" + kakaoRedirectUri +
+                "&code=" + code;
 
             bw.write(params);
             bw.flush();
@@ -57,30 +58,29 @@ public class TestService {
             BufferedReader br = new BufferedReader(new InputStreamReader(
                 responseCode == 200 ? conn.getInputStream() : conn.getErrorStream()));
 
-                StringBuilder responseSb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    responseSb.append(line);
-                }
-                br.close();
-    
-                if (responseCode != 200) {
-                    log.error("Failed to retrieve access token: {}", responseSb.toString());
-                    return null; // 혹은 적절한 예외를 던지기
-                }
-
-                JsonParser parser = new JsonParser();
-                JsonElement element = parser.parse(responseSb.toString());
-                accessToken = element.getAsJsonObject().get("access_token").getAsString();
-                refreshToken = element.getAsJsonObject().get("refresh_token").getAsString();
-    
-            } catch (Exception e) {
-                log.error("Exception occurred while getting access token", e);
+            StringBuilder responseSb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                responseSb.append(line);
             }
-            return accessToken;
-        }
+            br.close();
 
-    
+            if (responseCode != 200) {
+                log.error("Failed to retrieve access token: {}", responseSb);
+                return null; // 혹은 적절한 예외를 던지기
+            }
+
+            JsonParser parser = new JsonParser();
+            JsonElement element = parser.parse(responseSb.toString());
+            accessToken = element.getAsJsonObject().get("access_token").getAsString();
+            refreshToken = element.getAsJsonObject().get("refresh_token").getAsString();
+
+        } catch (Exception e) {
+            log.error("Exception occurred while getting access token", e);
+        }
+        return accessToken;
+    }
+
 
     public HashMap<String, Object> getUserInfo(String accessToken) {
         HashMap<String, Object> userInfo = new HashMap<>();
@@ -106,20 +106,16 @@ public class TestService {
             br.close();
 
             if (responseCode != 200) {
-                log.error("Failed to retrieve user info: {}", responseSb.toString());
+                log.error("Failed to retrieve user info: {}", responseSb);
                 return null; // 혹은 적절한 예외를 던지기
             }
 
-           ObjectMapper objectMapper = new ObjectMapper();
-           Map<String, Object> responseMap = objectMapper.readValue(responseSb.toString(), Map.class);
-            System.out.println(responseMap);
-            System.out.println(responseMap.get("id"));
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Object> responseMap = objectMapper.readValue(responseSb.toString(), Map.class);
             Map<String, Object> kakaoAccount = objectMapper.convertValue(responseMap.get("kakao_account"), Map.class);
-           
-           System.out.println(kakaoAccount);
-           userInfo.put("email", kakaoAccount.get("email"));
-           userInfo.put("name", kakaoAccount.get("name"));
-            System.out.println(userInfo);
+
+            userInfo.put("email", kakaoAccount.get("email"));
+            userInfo.put("name", kakaoAccount.get("name"));
         } catch (Exception e) {
             log.error("Exception occurred while getting user info", e);
         }
@@ -149,14 +145,14 @@ public class TestService {
             br.close();
 
             if (responseCode != 200) {
-                log.error("Failed to logout: {}", responseSb.toString());
+                log.error("Failed to logout: {}", responseSb);
             } else {
-                log.info("kakao logout - responseBody = {}", responseSb.toString());
+                log.info("kakao logout - responseBody = {}", responseSb);
             }
         } catch (Exception e) {
             log.error("Exception occurred while logging out", e);
         }
     }
 
-    
+
 }

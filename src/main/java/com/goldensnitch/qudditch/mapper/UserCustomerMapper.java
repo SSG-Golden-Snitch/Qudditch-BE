@@ -2,9 +2,8 @@
 
 package com.goldensnitch.qudditch.mapper;
 
-import org.apache.ibatis.annotations.Mapper;
-
 import com.goldensnitch.qudditch.dto.UserCustomer;
+import org.apache.ibatis.annotations.Mapper;
 
 @Mapper // Mybatis 사용 시 @Mapper 어노테이션 사용
 public interface UserCustomerMapper {
@@ -12,11 +11,13 @@ public interface UserCustomerMapper {
 
     int insertUserCustomer(UserCustomer user);
 
+    int insertUserCustomerKakao(UserCustomer user);
+
     UserCustomer findByVerificationCode(String verificationCode);
 
-    int  updateUserCustomer(UserCustomer user);
+    int updateUserCustomer(UserCustomer user);
 
-    UserCustomer  findByEmail(String email);
+    UserCustomer findByEmail(String email);
 
     UserCustomer selectUserByName(String name);
 

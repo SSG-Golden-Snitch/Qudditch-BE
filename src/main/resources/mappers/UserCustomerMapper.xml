@@ -10,6 +10,10 @@
         INSERT INTO user_customer (email, verification_code)
         VALUES (#{email}, #{verificationCode})
     </insert>
+    <insert id="insertUserCustomerKakao" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
+        INSERT INTO user_customer (email, password, name, state)
+        VALUES (#{email}, #{password}, #{name}, #{state})
+    </insert>
 
 
     <!-- select쿼리 -->
@@ -18,7 +22,7 @@
         SELECT *
         FROM user_customer
         WHERE email = #{email}
-        AND password = #{password}
+          AND password = #{password}
     </select>
     <!-- ID로 특정 사용자 조회 -->
     <select id="selectUserById" parameterType="int" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
@@ -35,7 +39,9 @@
 
     <!-- 인증 코드로 사용자 조회 -->
     <select id="findByVerificationCode" resultType="com.goldensnitch.qudditch.dto.UserCustomer">
-        SELECT * FROM user_customer WHERE verification_code = #{verificationCode}
+        SELECT *
+        FROM user_customer
+        WHERE verification_code = #{verificationCode}
     </select>
 
     <!-- 전체 사용자 조회 -->
@@ -68,7 +74,7 @@
     <select id="selectUserCustomerWithStore" resultType="map">
         SELECT uc.*, us.store_id, us.bn_number
         FROM user_customer uc
-                JOIN user_store us ON uc.id = us.id
+                 JOIN user_store us ON uc.id = us.id
         WHERE uc.id = #{id}
     </select>
 
@@ -85,19 +91,21 @@
 
     <!-- update쿼리 -->
     <!-- 사용자 정보 업데이트 -->
-<!-- 사용자 정보 업데이트 -->
-<update id="updateUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
-    UPDATE user_customer
-    SET password = #{password},
-        name = #{name},
-        state = #{state},
-        modified_at = NOW(),
-        verification_code = #{verificationCode}
-    WHERE email = #{email}
-</update>
+    <!-- 사용자 정보 업데이트 -->
+    <update id="updateUserCustomer" parameterType="com.goldensnitch.qudditch.dto.UserCustomer">
+        UPDATE user_customer
+        SET password          = #{password},
+            name              = #{name},
+            state             = #{state},
+            modified_at       = NOW(),
+            verification_code = #{verificationCode}
+        WHERE email = #{email}
+    </update>
     <!-- 이메일로 사용자의 인증 코드를 업데이트 -->
     <update id="updateVerificationCode" parameterType="map">
-        UPDATE user_customer SET verification_code = #{verificationCode} WHERE email = #{email}
+        UPDATE user_customer
+        SET verification_code = #{verificationCode}
+        WHERE email = #{email}
     </update>
 
 
@@ -108,8 +116,6 @@
         from user_customer
         where id = #{id}
     </delete>
-
-    
 
 
 </mapper>
